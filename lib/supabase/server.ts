@@ -17,6 +17,24 @@ export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseService
   },
 });
 
+export const supabaseServer = supabaseAdmin;
+
+export const createServiceRoleClient = () =>
+  createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+export const createAnonClient = () =>
+  createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
 export const createSupabaseServerClient = () => {
   const cookieStore = cookies();
 
