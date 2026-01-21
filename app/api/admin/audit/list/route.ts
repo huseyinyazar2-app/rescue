@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     await requireAdmin(request);
 
     const { data, error } = await supabaseAdmin
-      .from("audit_logs")
+      .from("rescue_audit_logs")
       .select("id, actor_id, action, target_type, target_id, details, created_at")
       .order("created_at", { ascending: false })
       .limit(500);

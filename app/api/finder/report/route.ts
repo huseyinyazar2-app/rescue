@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: heroName.error }, { status: 400 });
   }
 
-  const { error } = await supabase.from('sightings').insert({
+  const { error } = await supabase.from('rescue_sightings').insert({
     pet_id: payload.petId,
     lat: payload.lat ?? null,
     lon: payload.lon ?? null,

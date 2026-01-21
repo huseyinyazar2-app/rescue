@@ -2,18 +2,18 @@
 
 begin;
 
-alter table if exists sightings
+alter table if exists rescue_sightings
   add column if not exists hero_opt_in boolean not null default false,
   add column if not exists hero_display_name text null,
   add column if not exists is_hidden boolean not null default false;
 
-alter table if exists pets
+alter table if exists rescue_pets
   add column if not exists is_hidden boolean not null default false;
 
-create table if not exists volunteer_tasks (
+create table if not exists rescue_volunteer_tasks (
   id uuid primary key default gen_random_uuid(),
-  pet_id uuid not null references pets(id) on delete cascade,
-  sighting_id uuid null references sightings(id) on delete set null,
+  pet_id uuid not null references rescue_pets(id) on delete cascade,
+  sighting_id uuid null references rescue_sightings(id) on delete set null,
   created_by uuid not null references auth.users(id) on delete cascade,
   status text not null default 'open' check (status in ('open','closed','cancelled')),
   task_type text not null default 'confirm_sighting' check (task_type in ('confirm_sighting','search_help')),
@@ -26,11 +26,11 @@ create table if not exists volunteer_tasks (
   is_hidden boolean not null default false
 );
 
-create index if not exists volunteer_tasks_open_idx on volunteer_tasks(status, is_hidden);
+create index if not exists volunteer_tasks_open_idx on rescue_volunteer_tasks(status, is_hidden);
 
-create table if not exists volunteer_task_responses (
+create table if not exists rescue_volunteer_task_responses (
   id uuid primary key default gen_random_uuid(),
-  task_id uuid not null references volunteer_tasks(id) on delete cascade,
+  task_id uuid not null references rescue_volunteer_tasks(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   response_type text not null check (response_type in ('seen','not_seen','maybe','can_help','cant_help')),
   message text null,
@@ -39,26 +39,26 @@ create table if not exists volunteer_task_responses (
   unique (task_id, user_id)
 );
 
-create table if not exists thanks_posts (
+create table if not exists rescue_thanks_posts (
   id uuid primary key default gen_random_uuid(),
-  pet_id uuid unique not null references pets(id) on delete cascade,
+  pet_id uuid unique not null references rescue_pets(id) on delete cascade,
   created_by uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz default now(),
   message text null,
   hero_kind text not null default 'anonymous' check (hero_kind in ('anonymous','finder','volunteer')),
   hero_display_name text null,
-  sighting_id uuid null references sightings(id) on delete set null,
+  sighting_id uuid null references rescue_sightings(id) on delete set null,
   is_published boolean not null default false,
   published_at timestamptz null,
   is_hidden boolean not null default false
 );
 
 -- Moderation policies
-alter table if exists pets enable row level security;
-alter table if exists sightings enable row level security;
-alter table if exists volunteer_tasks enable row level security;
-alter table if exists volunteer_task_responses enable row level security;
-alter table if exists thanks_posts enable row level security;
+alter table if exists rescue_pets enable row level security;
+alter table if exists rescue_sightings enable row level security;
+alter table if exists rescue_volunteer_tasks enable row level security;
+alter table if exists rescue_volunteer_task_responses enable row level security;
+alter table if exists rescue_thanks_posts enable row level security;
 
 do $$
 begin
@@ -114,14 +114,14 @@ begin
     vt.created_at,
     round(vt.center_lat::numeric, 3)::double precision,
     round(vt.center_lon::numeric, 3)::double precision
-  from volunteer_tasks vt
-  join pets p on p.id = vt.pet_id
+  from rescue_volunteer_tasks vt
+  join rescue_pets p on p.id = vt.pet_id
   where vt.status = 'open'
     and vt.is_hidden = false
     and p.is_hidden = false
     and exists (
       select 1
-      from volunteer_subscriptions vs
+      from rescue_volunteer_subscriptions vs
       where vs.user_id = auth.uid()
         and public.haversine_km(vs.center_lat, vs.center_lon, vt.center_lat, vt.center_lon) <= (vs.radius_km + vt.radius_km)
     );
@@ -150,7 +150,7 @@ begin
 
   select owner_id, last_seen_lat, last_seen_lon
     into v_owner_id, v_lat, v_lon
-  from pets
+  from rescue_pets
   where id = p_pet_id;
 
   if v_owner_id is null or v_owner_id <> auth.uid() then
@@ -159,7 +159,7 @@ begin
 
   if p_sighting_id is not null then
     select lat, lon into v_lat, v_lon
-    from sightings
+    from rescue_sightings
     where id = p_sighting_id;
   end if;
 
@@ -167,7 +167,7 @@ begin
     raise exception 'Missing location';
   end if;
 
-  insert into volunteer_tasks (
+  insert into rescue_volunteer_tasks (
     pet_id,
     sighting_id,
     created_by,
@@ -185,8 +185,8 @@ begin
     p_message
   ) returning id into v_task_id;
 
-  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'notification_events') then
-    insert into notification_events (event_type, payload)
+  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'rescue_notification_events') then
+    insert into rescue_notification_events (event_type, payload)
     values ('TASK_CREATED', jsonb_build_object('task_id', v_task_id, 'pet_id', p_pet_id));
   end if;
 
@@ -218,7 +218,7 @@ declare
 begin
   select species, last_seen_lat, last_seen_lon
     into v_species, v_lat, v_lon
-  from pets
+  from rescue_pets
   where id = p_pet_id;
 
   return query
@@ -232,7 +232,7 @@ begin
     round(p.last_seen_lon::numeric, 3)::double precision,
     (public.haversine_km(v_lat, v_lon, p.last_seen_lat, p.last_seen_lon) +
       extract(epoch from (now() - p.updated_at)) / 86400) as score
-  from pets p
+  from rescue_pets p
   where p.id <> p_pet_id
     and p.species = v_species
     and p.status = 'lost'
@@ -250,68 +250,68 @@ end;
 $$;
 
 -- RLS policies
-create policy pets_owner_hide on pets
+create policy pets_owner_hide on rescue_pets
   for update
   using (owner_id = auth.uid());
 
-create policy sightings_owner_hide on sightings
+create policy sightings_owner_hide on rescue_sightings
   for update
-  using (exists (select 1 from pets where pets.id = sightings.pet_id and pets.owner_id = auth.uid()));
+  using (exists (select 1 from rescue_pets where rescue_pets.id = rescue_sightings.pet_id and rescue_pets.owner_id = auth.uid()));
 
-create policy volunteer_tasks_owner_all on volunteer_tasks
+create policy volunteer_tasks_owner_all on rescue_volunteer_tasks
   for all
   using (created_by = auth.uid())
   with check (created_by = auth.uid());
 
-create policy volunteer_tasks_volunteer_read on volunteer_tasks
+create policy volunteer_tasks_volunteer_read on rescue_volunteer_tasks
   for select
   using (
     status = 'open'
     and is_hidden = false
     and exists (
       select 1
-      from volunteer_subscriptions vs
+      from rescue_volunteer_subscriptions vs
       where vs.user_id = auth.uid()
         and public.haversine_km(vs.center_lat, vs.center_lon, center_lat, center_lon) <= (vs.radius_km + radius_km)
     )
   );
 
-create policy volunteer_task_responses_owner_read on volunteer_task_responses
+create policy volunteer_task_responses_owner_read on rescue_volunteer_task_responses
   for select
   using (
     exists (
       select 1
-      from volunteer_tasks vt
-      where vt.id = volunteer_task_responses.task_id
+      from rescue_volunteer_tasks vt
+      where vt.id = rescue_volunteer_task_responses.task_id
         and vt.created_by = auth.uid()
     )
   );
 
-create policy volunteer_task_responses_user_all on volunteer_task_responses
+create policy volunteer_task_responses_user_all on rescue_volunteer_task_responses
   for all
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
-create policy thanks_posts_public_read on thanks_posts
+create policy thanks_posts_public_read on rescue_thanks_posts
   for select
   using (is_published = true and is_hidden = false);
 
-create policy thanks_posts_owner_all on thanks_posts
+create policy thanks_posts_owner_all on rescue_thanks_posts
   for all
   using (
     exists (
       select 1
-      from pets
-      where pets.id = thanks_posts.pet_id
-        and pets.owner_id = auth.uid()
+      from rescue_pets
+      where rescue_pets.id = rescue_thanks_posts.pet_id
+        and rescue_pets.owner_id = auth.uid()
     )
   )
   with check (
     exists (
       select 1
-      from pets
-      where pets.id = thanks_posts.pet_id
-        and pets.owner_id = auth.uid()
+      from rescue_pets
+      where rescue_pets.id = rescue_thanks_posts.pet_id
+        and rescue_pets.owner_id = auth.uid()
     )
   );
 

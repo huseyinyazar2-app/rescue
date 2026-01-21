@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     let ownerIds: string[] | null = null;
     if (ownerEmail) {
       const { data: owners } = await supabaseAdmin
-        .from("profiles")
+        .from("rescue_profiles")
         .select("id")
         .ilike("email", `%${ownerEmail}%`);
       ownerIds = owners?.map((owner) => owner.id) ?? [];
@@ -25,9 +25,9 @@ export async function GET(request: Request) {
     }
 
     let query = supabaseAdmin
-      .from("pets")
+      .from("rescue_pets")
       .select(
-        "id, name, status, last_seen_area, tag:tags(public_code), owner:profiles(email), created_at"
+        "id, name, status, last_seen_area, tag:rescue_tags(public_code), owner:rescue_profiles(email), created_at"
       )
       .order("created_at", { ascending: false });
 
