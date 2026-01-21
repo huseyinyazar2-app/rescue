@@ -7,6 +7,7 @@
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 APP_BASE_URL=
@@ -16,7 +17,7 @@ RESEND_API_KEY=
 FROM_EMAIL=
 ```
 
-> `EMAIL_PROVIDER` boş ise bildirimler `notification_outbox` kuyruğunda kalır.
+> `EMAIL_PROVIDER` boş ise bildirimler `rescue_notification_outbox` kuyruğunda kalır.
 
 ## Cron / Bildirim İşleme
 

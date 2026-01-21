@@ -15,6 +15,7 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
 IP_HASH_SECRET=
 APP_BASE_URL=
 ```
@@ -25,14 +26,14 @@ APP_BASE_URL=
    npm install
    ```
 2. Apply the SQL migration in `db/migrations/001_admin.sql` to your Supabase project.
-3. Create a profile row for your admin user in the `profiles` table and set `role='admin'`.
+3. Create a profile row for your admin user in the `rescue_profiles` table and set `role='admin'`.
 4. Run the app:
    ```bash
    npm run dev
    ```
 
 ## Admin Access
-Admin API routes require a Bearer token from Supabase Auth. The server uses the service role key to validate tokens and check the `profiles.role`.
+Admin API routes require a Bearer token from Supabase Auth. The server uses the service role key to validate tokens and check the `rescue_profiles.role`.
 
 ## Batch Creation
 POST `/api/admin/batches/create` with JSON payload:
@@ -51,7 +52,7 @@ Response includes:
 - PNG (single tag): `/api/admin/tags/:id/export/png`
 
 ## Audit Logs
-Admin actions are written to `audit_logs`, including:
+Admin actions are written to `rescue_audit_logs`, including:
 - Batch creation
 - Export requests
 - Sensitive sighting view

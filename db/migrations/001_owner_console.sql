@@ -12,9 +12,9 @@ declare
 begin
   select *
     into v_tag
-    from public.tags
-   where tags.public_code = claim_tag.public_code
-     and tags.status = 'unclaimed'
+    from public.rescue_tags
+   where rescue_tags.public_code = claim_tag.public_code
+     and rescue_tags.status = 'unclaimed'
    limit 1;
 
   if v_tag is null then
@@ -25,15 +25,15 @@ begin
     raise exception 'Invalid PIN' using errcode = '28000';
   end if;
 
-  update public.tags
+  update public.rescue_tags
      set status = 'claimed',
          claimed_by = auth.uid(),
          claimed_at = now()
    where id = v_tag.id
   returning id into v_tag_id;
 
-  insert into public.audit_logs (action, actor_id, target_table, target_id, metadata)
-  values ('OWNER_CLAIM_TAG', auth.uid(), 'tags', v_tag_id, jsonb_build_object('public_code', v_tag.public_code));
+  insert into public.rescue_audit_logs (action, actor_id, target_table, target_id, metadata)
+  values ('OWNER_CLAIM_TAG', auth.uid(), 'rescue_tags', v_tag_id, jsonb_build_object('public_code', v_tag.public_code));
 
   return v_tag_id;
 end;
@@ -51,29 +51,29 @@ as $$
 begin
   if not exists (
     select 1
-      from public.pets
-     where pets.id = attach_tag_to_pet.pet_id
-       and pets.owner_id = auth.uid()
+      from public.rescue_pets
+     where rescue_pets.id = attach_tag_to_pet.pet_id
+       and rescue_pets.owner_id = auth.uid()
   ) then
     raise exception 'Pet not found for owner' using errcode = '22023';
   end if;
 
   if not exists (
     select 1
-      from public.tags
-     where tags.id = attach_tag_to_pet.tag_id
-       and tags.claimed_by = auth.uid()
+      from public.rescue_tags
+     where rescue_tags.id = attach_tag_to_pet.tag_id
+       and rescue_tags.claimed_by = auth.uid()
   ) then
     raise exception 'Tag not claimed by owner' using errcode = '22023';
   end if;
 
-  update public.pets
+  update public.rescue_pets
      set tag_id = attach_tag_to_pet.tag_id,
          updated_at = now()
    where id = attach_tag_to_pet.pet_id;
 
-  insert into public.audit_logs (action, actor_id, target_table, target_id, metadata)
-  values ('OWNER_ATTACH_TAG', auth.uid(), 'pets', attach_tag_to_pet.pet_id, jsonb_build_object('tag_id', attach_tag_to_pet.tag_id));
+  insert into public.rescue_audit_logs (action, actor_id, target_table, target_id, metadata)
+  values ('OWNER_ATTACH_TAG', auth.uid(), 'rescue_pets', attach_tag_to_pet.pet_id, jsonb_build_object('tag_id', attach_tag_to_pet.tag_id));
 end;
 $$;
 
@@ -98,20 +98,20 @@ security definer
 set search_path = public
 as $$
   select
-    pets.id as pet_id,
-    pets.name,
-    pets.species,
-    pets.photo_url,
-    pets.status,
-    pets.last_seen_area,
-    pets.tag_id,
-    tags.public_code as tag_public_code,
-    pets.created_at,
-    pets.updated_at
-  from public.pets
-  left join public.tags on tags.id = pets.tag_id
-  where pets.owner_id = auth.uid()
-  order by pets.created_at desc;
+    rescue_pets.id as pet_id,
+    rescue_pets.name,
+    rescue_pets.species,
+    rescue_pets.photo_url,
+    rescue_pets.status,
+    rescue_pets.last_seen_area,
+    rescue_pets.tag_id,
+    rescue_tags.public_code as tag_public_code,
+    rescue_pets.created_at,
+    rescue_pets.updated_at
+  from public.rescue_pets
+  left join public.rescue_tags on rescue_tags.id = rescue_pets.tag_id
+  where rescue_pets.owner_id = auth.uid()
+  order by rescue_pets.created_at desc;
 $$;
 
 revoke execute on function public.get_owner_pet_overview() from public;
@@ -134,35 +134,35 @@ as $$
 begin
   if not exists (
     select 1
-      from public.pets
-     where pets.id = get_owner_sightings.pet_id
-       and pets.owner_id = auth.uid()
+      from public.rescue_pets
+     where rescue_pets.id = get_owner_sightings.pet_id
+       and rescue_pets.owner_id = auth.uid()
   ) then
     raise exception 'Pet not found for owner' using errcode = '22023';
   end if;
 
-  insert into public.audit_logs (action, actor_id, target_table, target_id, metadata)
+  insert into public.rescue_audit_logs (action, actor_id, target_table, target_id, metadata)
   values (
     'OWNER_VIEW_SIGHTINGS',
     auth.uid(),
-    'pets',
+    'rescue_pets',
     get_owner_sightings.pet_id,
     jsonb_build_object('rounded_precision', 3)
   );
 
   return query
   select
-    sightings.id,
-    sightings.created_at,
-    round(sightings.lat::numeric, 3)::double precision as approx_lat,
-    round(sightings.lon::numeric, 3)::double precision as approx_lon,
-    sightings.location_accuracy_m,
-    sightings.message,
-    sightings.photo_url
-  from public.sightings
-  where sightings.pet_id = get_owner_sightings.pet_id
-    and coalesce(sightings.is_suspected_spam, false) = false
-  order by sightings.created_at desc;
+    rescue_sightings.id,
+    rescue_sightings.created_at,
+    round(rescue_sightings.lat::numeric, 3)::double precision as approx_lat,
+    round(rescue_sightings.lon::numeric, 3)::double precision as approx_lon,
+    rescue_sightings.location_accuracy_m,
+    rescue_sightings.message,
+    rescue_sightings.photo_url
+  from public.rescue_sightings
+  where rescue_sightings.pet_id = get_owner_sightings.pet_id
+    and coalesce(rescue_sightings.is_suspected_spam, false) = false
+  order by rescue_sightings.created_at desc;
 end;
 $$;
 
@@ -184,41 +184,41 @@ security definer
 set search_path = public
 as $$
   select
-    pets.id as pet_id,
-    pets.name,
-    pets.species,
-    pets.photo_url,
-    pets.status,
-    pets.last_seen_area,
-    tags.public_code as tag_public_code
-  from public.tags
-  join public.pets on pets.tag_id = tags.id
-  where tags.public_code = get_public_pet_by_code.public_code
+    rescue_pets.id as pet_id,
+    rescue_pets.name,
+    rescue_pets.species,
+    rescue_pets.photo_url,
+    rescue_pets.status,
+    rescue_pets.last_seen_area,
+    rescue_tags.public_code as tag_public_code
+  from public.rescue_tags
+  join public.rescue_pets on rescue_pets.tag_id = rescue_tags.id
+  where rescue_tags.public_code = get_public_pet_by_code.public_code
   limit 1;
 $$;
 
 revoke execute on function public.get_public_pet_by_code(text) from public;
 grant execute on function public.get_public_pet_by_code(text) to anon, authenticated;
 
-revoke select on table public.sightings from authenticated;
-revoke select on table public.tags from authenticated;
+revoke select on table public.rescue_sightings from authenticated;
+revoke select on table public.rescue_tags from authenticated;
 
-alter table public.pets enable row level security;
+alter table public.rescue_pets enable row level security;
 
 create policy owner_pets_select
-on public.pets
+on public.rescue_pets
 for select
 to authenticated
 using (owner_id = auth.uid());
 
 create policy owner_pets_insert
-on public.pets
+on public.rescue_pets
 for insert
 to authenticated
 with check (owner_id = auth.uid());
 
 create policy owner_pets_update
-on public.pets
+on public.rescue_pets
 for update
 to authenticated
 using (owner_id = auth.uid())

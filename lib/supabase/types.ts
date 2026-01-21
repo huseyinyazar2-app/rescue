@@ -3,7 +3,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 export interface Database {
   public: {
     Tables: {
-      pets: {
+      rescue_pets: {
         Row: {
           id: string;
           owner_id: string;
@@ -30,9 +30,9 @@ export interface Database {
           created_at?: string;
           updated_at?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['pets']['Insert']>;
+        Update: Partial<Database['public']['Tables']['rescue_pets']['Insert']>;
       };
-      tags: {
+      rescue_tags: {
         Row: {
           id: string;
           public_code: string;
@@ -45,7 +45,7 @@ export interface Database {
           status?: string;
           claimed_by?: string | null;
         };
-        Update: Partial<Database['public']['Tables']['tags']['Insert']>;
+        Update: Partial<Database['public']['Tables']['rescue_tags']['Insert']>;
       };
     };
     Functions: {

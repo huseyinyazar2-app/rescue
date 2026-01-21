@@ -1,6 +1,6 @@
--- Part 4A: community + volunteers + notifications
+-- Part 4A: community + rescue_volunteers + notifications
 
-ALTER TABLE pets
+ALTER TABLE rescue_pets
   ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS public_blurb text NULL,
   ADD COLUMN IF NOT EXISTS last_seen_lat double precision NULL,
@@ -8,7 +8,7 @@ ALTER TABLE pets
   ADD COLUMN IF NOT EXISTS last_seen_radius_km double precision NULL DEFAULT 2,
   ADD COLUMN IF NOT EXISTS public_visibility jsonb NOT NULL DEFAULT '{}'::jsonb;
 
-CREATE TABLE IF NOT EXISTS volunteers (
+CREATE TABLE IF NOT EXISTS rescue_volunteers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   is_enabled boolean NOT NULL DEFAULT true,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS volunteers (
   updated_at timestamptz DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS volunteer_subscriptions (
+CREATE TABLE IF NOT EXISTS rescue_volunteer_subscriptions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   name text NOT NULL,
@@ -31,10 +31,10 @@ CREATE TABLE IF NOT EXISTS volunteer_subscriptions (
   updated_at timestamptz DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS notification_events (
+CREATE TABLE IF NOT EXISTS rescue_notification_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_type text NOT NULL CHECK (event_type IN ('PET_LOST_PUBLIC','PET_FOUND_PUBLIC')),
-  pet_id uuid REFERENCES pets(id) ON DELETE CASCADE,
+  pet_id uuid REFERENCES rescue_pets(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
   processed_at timestamptz NULL,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processed','failed')),
@@ -42,9 +42,9 @@ CREATE TABLE IF NOT EXISTS notification_events (
   payload jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
-CREATE TABLE IF NOT EXISTS notification_outbox (
+CREATE TABLE IF NOT EXISTS rescue_notification_outbox (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id uuid REFERENCES notification_events(id) ON DELETE CASCADE,
+  event_id uuid REFERENCES rescue_notification_events(id) ON DELETE CASCADE,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   to_email text NOT NULL,
   subject text NOT NULL,
@@ -75,10 +75,10 @@ AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status OR NEW.is_public IS DISTINCT FROM OLD.is_public THEN
     IF NEW.status = 'lost' AND NEW.is_public = true THEN
-      INSERT INTO notification_events (event_type, pet_id)
+      INSERT INTO rescue_notification_events (event_type, pet_id)
       VALUES ('PET_LOST_PUBLIC', NEW.id);
     ELSIF NEW.status = 'found' AND NEW.is_public = true THEN
-      INSERT INTO notification_events (event_type, pet_id)
+      INSERT INTO rescue_notification_events (event_type, pet_id)
       VALUES ('PET_FOUND_PUBLIC', NEW.id);
     END IF;
   END IF;
@@ -86,71 +86,71 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS pets_status_change_trigger ON pets;
+DROP TRIGGER IF EXISTS pets_status_change_trigger ON rescue_pets;
 CREATE TRIGGER pets_status_change_trigger
-AFTER UPDATE OF status, is_public ON pets
+AFTER UPDATE OF status, is_public ON rescue_pets
 FOR EACH ROW
 EXECUTE FUNCTION on_pet_status_change();
 
-ALTER TABLE volunteers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE volunteer_subscriptions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notification_events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notification_outbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rescue_volunteers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rescue_volunteer_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rescue_notification_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rescue_notification_outbox ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "volunteers_select_own" ON volunteers;
-CREATE POLICY "volunteers_select_own" ON volunteers
+DROP POLICY IF EXISTS "volunteers_select_own" ON rescue_volunteers;
+CREATE POLICY "volunteers_select_own" ON rescue_volunteers
   FOR SELECT USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "volunteers_insert_own" ON volunteers;
-CREATE POLICY "volunteers_insert_own" ON volunteers
+DROP POLICY IF EXISTS "volunteers_insert_own" ON rescue_volunteers;
+CREATE POLICY "volunteers_insert_own" ON rescue_volunteers
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "volunteers_update_own" ON volunteers;
-CREATE POLICY "volunteers_update_own" ON volunteers
+DROP POLICY IF EXISTS "volunteers_update_own" ON rescue_volunteers;
+CREATE POLICY "volunteers_update_own" ON rescue_volunteers
   FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "volunteers_delete_own" ON volunteers;
-CREATE POLICY "volunteers_delete_own" ON volunteers
+DROP POLICY IF EXISTS "volunteers_delete_own" ON rescue_volunteers;
+CREATE POLICY "volunteers_delete_own" ON rescue_volunteers
   FOR DELETE USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "subscriptions_select_own" ON volunteer_subscriptions;
-CREATE POLICY "subscriptions_select_own" ON volunteer_subscriptions
+DROP POLICY IF EXISTS "subscriptions_select_own" ON rescue_volunteer_subscriptions;
+CREATE POLICY "subscriptions_select_own" ON rescue_volunteer_subscriptions
   FOR SELECT USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "subscriptions_insert_own" ON volunteer_subscriptions;
-CREATE POLICY "subscriptions_insert_own" ON volunteer_subscriptions
+DROP POLICY IF EXISTS "subscriptions_insert_own" ON rescue_volunteer_subscriptions;
+CREATE POLICY "subscriptions_insert_own" ON rescue_volunteer_subscriptions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "subscriptions_update_own" ON volunteer_subscriptions;
-CREATE POLICY "subscriptions_update_own" ON volunteer_subscriptions
+DROP POLICY IF EXISTS "subscriptions_update_own" ON rescue_volunteer_subscriptions;
+CREATE POLICY "subscriptions_update_own" ON rescue_volunteer_subscriptions
   FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "subscriptions_delete_own" ON volunteer_subscriptions;
-CREATE POLICY "subscriptions_delete_own" ON volunteer_subscriptions
+DROP POLICY IF EXISTS "subscriptions_delete_own" ON rescue_volunteer_subscriptions;
+CREATE POLICY "subscriptions_delete_own" ON rescue_volunteer_subscriptions
   FOR DELETE USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "notification_events_admin_select" ON notification_events;
-CREATE POLICY "notification_events_admin_select" ON notification_events
+DROP POLICY IF EXISTS "notification_events_admin_select" ON rescue_notification_events;
+CREATE POLICY "notification_events_admin_select" ON rescue_notification_events
   FOR SELECT USING ((auth.jwt() ->> 'role') = 'admin');
 
-DROP POLICY IF EXISTS "notification_events_insert_admin" ON notification_events;
-CREATE POLICY "notification_events_insert_admin" ON notification_events
+DROP POLICY IF EXISTS "notification_events_insert_admin" ON rescue_notification_events;
+CREATE POLICY "notification_events_insert_admin" ON rescue_notification_events
   FOR INSERT WITH CHECK ((auth.jwt() ->> 'role') = 'admin');
 
-DROP POLICY IF EXISTS "notification_events_update_admin" ON notification_events;
-CREATE POLICY "notification_events_update_admin" ON notification_events
+DROP POLICY IF EXISTS "notification_events_update_admin" ON rescue_notification_events;
+CREATE POLICY "notification_events_update_admin" ON rescue_notification_events
   FOR UPDATE USING ((auth.jwt() ->> 'role') = 'admin') WITH CHECK ((auth.jwt() ->> 'role') = 'admin');
 
-DROP POLICY IF EXISTS "notification_outbox_admin_select" ON notification_outbox;
-CREATE POLICY "notification_outbox_admin_select" ON notification_outbox
+DROP POLICY IF EXISTS "notification_outbox_admin_select" ON rescue_notification_outbox;
+CREATE POLICY "notification_outbox_admin_select" ON rescue_notification_outbox
   FOR SELECT USING ((auth.jwt() ->> 'role') = 'admin');
 
-DROP POLICY IF EXISTS "notification_outbox_insert_admin" ON notification_outbox;
-CREATE POLICY "notification_outbox_insert_admin" ON notification_outbox
+DROP POLICY IF EXISTS "notification_outbox_insert_admin" ON rescue_notification_outbox;
+CREATE POLICY "notification_outbox_insert_admin" ON rescue_notification_outbox
   FOR INSERT WITH CHECK ((auth.jwt() ->> 'role') = 'admin');
 
-DROP POLICY IF EXISTS "notification_outbox_update_admin" ON notification_outbox;
-CREATE POLICY "notification_outbox_update_admin" ON notification_outbox
+DROP POLICY IF EXISTS "notification_outbox_update_admin" ON rescue_notification_outbox;
+CREATE POLICY "notification_outbox_update_admin" ON rescue_notification_outbox
   FOR UPDATE USING ((auth.jwt() ->> 'role') = 'admin') WITH CHECK ((auth.jwt() ->> 'role') = 'admin');
 
 CREATE OR REPLACE FUNCTION get_public_lost_post(public_code text)
@@ -176,21 +176,21 @@ DECLARE
 BEGIN
   RETURN QUERY
   SELECT
-    pets.id,
-    tags.public_code,
-    tags.is_activated,
-    pets.status,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_name')::boolean, true) THEN pets.name ELSE NULL END,
-    pets.species,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_photo')::boolean, true) THEN pets.photo_url ELSE NULL END,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_blurb')::boolean, true) THEN pets.public_blurb ELSE NULL END,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_area_text')::boolean, true) THEN pets.last_seen_area ELSE NULL END,
-    CASE WHEN pets.last_seen_lat IS NOT NULL THEN round(pets.last_seen_lat::numeric, 3)::double precision ELSE NULL END,
-    CASE WHEN pets.last_seen_lon IS NOT NULL THEN round(pets.last_seen_lon::numeric, 3)::double precision ELSE NULL END,
-    pets.last_seen_radius_km
-  FROM tags
-  JOIN pets ON pets.tag_id = tags.id
-  WHERE tags.public_code = get_public_lost_post.public_code
+    rescue_pets.id,
+    rescue_tags.public_code,
+    rescue_tags.is_activated,
+    rescue_pets.status,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_name')::boolean, true) THEN rescue_pets.name ELSE NULL END,
+    rescue_pets.species,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_photo')::boolean, true) THEN rescue_pets.photo_url ELSE NULL END,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_blurb')::boolean, true) THEN rescue_pets.public_blurb ELSE NULL END,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_area_text')::boolean, true) THEN rescue_pets.last_seen_area ELSE NULL END,
+    CASE WHEN rescue_pets.last_seen_lat IS NOT NULL THEN round(rescue_pets.last_seen_lat::numeric, 3)::double precision ELSE NULL END,
+    CASE WHEN rescue_pets.last_seen_lon IS NOT NULL THEN round(rescue_pets.last_seen_lon::numeric, 3)::double precision ELSE NULL END,
+    rescue_pets.last_seen_radius_km
+  FROM rescue_tags
+  JOIN rescue_pets ON rescue_pets.tag_id = rescue_tags.id
+  WHERE rescue_tags.public_code = get_public_lost_post.public_code
   LIMIT 1;
 END;
 $$;
@@ -219,24 +219,24 @@ LANGUAGE sql
 SECURITY DEFINER
 AS $$
   SELECT
-    pets.id,
-    tags.public_code,
-    pets.species,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_name')::boolean, true) THEN pets.name ELSE NULL END,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_photo')::boolean, true) THEN pets.photo_url ELSE NULL END,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_area_text')::boolean, true) THEN pets.last_seen_area ELSE NULL END,
-    round(pets.last_seen_lat::numeric, 3)::double precision,
-    round(pets.last_seen_lon::numeric, 3)::double precision,
-    pets.created_at,
-    pets.updated_at
-  FROM pets
-  JOIN tags ON tags.id = pets.tag_id
-  WHERE pets.status = 'lost'
-    AND pets.is_public = true
-    AND pets.last_seen_lat IS NOT NULL
-    AND pets.last_seen_lon IS NOT NULL
-    AND haversine_km(lat, lon, pets.last_seen_lat, pets.last_seen_lon) <= radius_km
-    AND (species IS NULL OR pets.species = species);
+    rescue_pets.id,
+    rescue_tags.public_code,
+    rescue_pets.species,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_name')::boolean, true) THEN rescue_pets.name ELSE NULL END,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_photo')::boolean, true) THEN rescue_pets.photo_url ELSE NULL END,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_area_text')::boolean, true) THEN rescue_pets.last_seen_area ELSE NULL END,
+    round(rescue_pets.last_seen_lat::numeric, 3)::double precision,
+    round(rescue_pets.last_seen_lon::numeric, 3)::double precision,
+    rescue_pets.created_at,
+    rescue_pets.updated_at
+  FROM rescue_pets
+  JOIN rescue_tags ON rescue_tags.id = rescue_pets.tag_id
+  WHERE rescue_pets.status = 'lost'
+    AND rescue_pets.is_public = true
+    AND rescue_pets.last_seen_lat IS NOT NULL
+    AND rescue_pets.last_seen_lon IS NOT NULL
+    AND haversine_km(lat, lon, rescue_pets.last_seen_lat, rescue_pets.last_seen_lon) <= radius_km
+    AND (species IS NULL OR rescue_pets.species = species);
 $$;
 
 GRANT EXECUTE ON FUNCTION list_public_lost_posts_near(double precision, double precision, double precision, text) TO anon;
@@ -262,28 +262,28 @@ LANGUAGE sql
 SECURITY DEFINER
 AS $$
   SELECT
-    pets.id,
-    tags.public_code,
-    pets.species,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_name')::boolean, true) THEN pets.name ELSE NULL END,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_photo')::boolean, true) THEN pets.photo_url ELSE NULL END,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_blurb')::boolean, true) THEN pets.public_blurb ELSE NULL END,
-    CASE WHEN COALESCE((pets.public_visibility ->> 'show_area_text')::boolean, true) THEN pets.last_seen_area ELSE NULL END,
-    CASE WHEN pets.last_seen_lat IS NOT NULL THEN round(pets.last_seen_lat::numeric, 3)::double precision ELSE NULL END,
-    CASE WHEN pets.last_seen_lon IS NOT NULL THEN round(pets.last_seen_lon::numeric, 3)::double precision ELSE NULL END,
-    pets.created_at,
-    pets.updated_at
-  FROM pets
-  JOIN tags ON tags.id = pets.tag_id
-  WHERE pets.status = 'lost'
-    AND pets.is_public = true
-    AND pets.updated_at >= now() - interval '7 days'
-    AND (species IS NULL OR pets.species = species)
+    rescue_pets.id,
+    rescue_tags.public_code,
+    rescue_pets.species,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_name')::boolean, true) THEN rescue_pets.name ELSE NULL END,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_photo')::boolean, true) THEN rescue_pets.photo_url ELSE NULL END,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_blurb')::boolean, true) THEN rescue_pets.public_blurb ELSE NULL END,
+    CASE WHEN COALESCE((rescue_pets.public_visibility ->> 'show_area_text')::boolean, true) THEN rescue_pets.last_seen_area ELSE NULL END,
+    CASE WHEN rescue_pets.last_seen_lat IS NOT NULL THEN round(rescue_pets.last_seen_lat::numeric, 3)::double precision ELSE NULL END,
+    CASE WHEN rescue_pets.last_seen_lon IS NOT NULL THEN round(rescue_pets.last_seen_lon::numeric, 3)::double precision ELSE NULL END,
+    rescue_pets.created_at,
+    rescue_pets.updated_at
+  FROM rescue_pets
+  JOIN rescue_tags ON rescue_tags.id = rescue_pets.tag_id
+  WHERE rescue_pets.status = 'lost'
+    AND rescue_pets.is_public = true
+    AND rescue_pets.updated_at >= now() - interval '7 days'
+    AND (species IS NULL OR rescue_pets.species = species)
     AND (
       query IS NULL OR
-      (pets.public_blurb IS NOT NULL AND pets.public_blurb ILIKE '%' || query || '%')
+      (rescue_pets.public_blurb IS NOT NULL AND rescue_pets.public_blurb ILIKE '%' || query || '%')
     )
-  ORDER BY pets.updated_at DESC;
+  ORDER BY rescue_pets.updated_at DESC;
 $$;
 
 GRANT EXECUTE ON FUNCTION list_public_lost_posts_recent(text, text) TO anon;

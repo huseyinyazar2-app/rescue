@@ -5,7 +5,7 @@ Bu doküman Finder (QR okutma / bulan) akışının nasıl çalıştığını ö
 ## Akış
 
 - `/c/[public_code]` etiketteki QR linki için açılır.
-- Sayfa açıldığında `tag_scans` tablosuna `action = 'view'` logu yazılır.
+- Sayfa açıldığında `rescue_tag_scans` tablosuna `action = 'view'` logu yazılır.
 - Finder formu anonimdir ve tüm yazma işlemleri `/api/finder/report` üzerinden yapılır.
 - Konum paylaşımı ayrıca `/api/finder/scan` ile `location_shared` logu olarak kaydedilir.
 
@@ -27,4 +27,3 @@ Bu doküman Finder (QR okutma / bulan) akışının nasıl çalıştığını ö
 ## Rate Limit
 
 - Aynı `ip_hash + public_code` için 5 dakikada en fazla 3 bildirim yapılabilir.
-

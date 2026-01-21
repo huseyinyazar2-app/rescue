@@ -1,11 +1,11 @@
 -- Finder Part 3 schema changes
 
-create table if not exists public.tag_scans (
+create table if not exists public.rescue_tag_scans (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   public_code text not null,
-  tag_id uuid null references public.tags(id) on delete set null,
-  pet_id uuid null references public.pets(id) on delete set null,
+  tag_id uuid null references public.rescue_tags(id) on delete set null,
+  pet_id uuid null references public.rescue_pets(id) on delete set null,
   action text not null check (action in ('view','location_shared','report_submitted','report_failed')),
   lat double precision null,
   lon double precision null,
@@ -17,10 +17,10 @@ create table if not exists public.tag_scans (
   metadata jsonb null
 );
 
-alter table public.tag_scans enable row level security;
-revoke all on public.tag_scans from anon, authenticated;
+alter table public.rescue_tag_scans enable row level security;
+revoke all on public.rescue_tag_scans from anon, authenticated;
 
-alter table public.sightings
+alter table public.rescue_sightings
   add column if not exists event_type text not null default 'seen';
 
 do $$
@@ -30,7 +30,7 @@ begin
     from pg_constraint
     where conname = 'sightings_event_type_check'
   ) then
-    alter table public.sightings
+    alter table public.rescue_sightings
       add constraint sightings_event_type_check
       check (event_type in ('seen','found','info'));
   end if;
@@ -51,7 +51,7 @@ security definer
 as $$
   with tag_row as (
     select id
-    from public.tags
+    from public.rescue_tags
     where public_code = input_public_code
     limit 1
   ),
@@ -62,7 +62,7 @@ as $$
       p.photo_url,
       p.status as pet_status,
       p.last_seen_area
-    from public.pets p
+    from public.rescue_pets p
     join tag_row t on p.tag_id = t.id
     limit 1
   )

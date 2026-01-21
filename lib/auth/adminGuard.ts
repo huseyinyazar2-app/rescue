@@ -23,7 +23,7 @@ export async function requireAdmin(request: Request) {
   }
 
   const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profiles")
+    .from("rescue_profiles")
     .select("id, email, role")
     .eq("id", data.user.id)
     .single();
