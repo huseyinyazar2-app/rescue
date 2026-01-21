@@ -8,7 +8,7 @@ type Params = { params: { public_code: string } };
 export default async function LostPetPage({ params }: Params) {
   const supabase = createSupabaseServerClient();
   const { data: pet } = await supabase
-    .from('pets')
+    .from('rescue_pets')
     .select('id,display_name,photo_url,last_seen_area')
     .eq('public_code', params.public_code)
     .single();

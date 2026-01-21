@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const batchId = params.id;
 
     const { data: tags, error } = await supabaseAdmin
-      .from("tags")
+      .from("rescue_tags")
       .select("public_code")
       .eq("batch_id", batchId)
       .order("created_at", { ascending: true });
