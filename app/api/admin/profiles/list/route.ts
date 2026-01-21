@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     await requireAdmin(request);
 
     const { data, error } = await supabaseAdmin
-      .from("profiles")
+      .from("rescue_profiles")
       .select("id, email, role, created_at")
       .order("created_at", { ascending: false })
       .limit(500);

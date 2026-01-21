@@ -13,7 +13,7 @@ interface BatchRequest {
 }
 
 async function fetchExistingCodes(codes: string[]) {
-  const { data: existing } = await supabaseAdmin.from("tags").select("public_code").in("public_code", codes);
+  const { data: existing } = await supabaseAdmin.from("rescue_tags").select("public_code").in("public_code", codes);
   return new Set(existing?.map((tag) => tag.public_code) ?? []);
 }
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const batchName = body.name ?? `Batch-${new Date().toISOString()}-${body.quantity}pcs`;
 
     const { data: batch, error: batchError } = await supabaseAdmin
-      .from("batches")
+      .from("rescue_batches")
       .insert({ name: batchName, quantity: body.quantity, created_by: user.id })
       .select("id")
       .single();
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to generate unique tags" }, { status: 500 });
     }
 
-    const { error: tagError } = await supabaseAdmin.from("tags").insert(
+    const { error: tagError } = await supabaseAdmin.from("rescue_tags").insert(
       tagsWithPins.map((tag) => ({
         public_code: tag.public_code,
         pin_hash: tag.pin_hash,

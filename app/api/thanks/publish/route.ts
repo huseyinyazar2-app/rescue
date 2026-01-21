@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   if (heroSelection.kind === 'finder' && heroSelection.refId) {
     const { data } = await supabase
-      .from('sightings')
+      .from('rescue_sightings')
       .select('hero_opt_in,hero_display_name')
       .eq('id', heroSelection.refId)
       .single();
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   if (heroSelection.kind === 'volunteer' && heroSelection.refId) {
     const { data } = await supabase
-      .from('volunteer_task_responses')
+      .from('rescue_volunteer_task_responses')
       .select('response_type')
       .eq('id', heroSelection.refId)
       .single();
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const { error } = await supabase.from('thanks_posts').upsert({
+  const { error } = await supabase.from('rescue_thanks_posts').upsert({
     pet_id: petId,
     message: typeof message === 'string' ? message : null,
     hero_kind: heroSelection.kind,

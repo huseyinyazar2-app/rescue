@@ -9,8 +9,8 @@ export async function GET(request: Request) {
     await requireAdmin(request);
 
     const { data, error } = await supabaseAdmin
-      .from("sightings")
-      .select("id, created_at, is_suspected_spam, lat, lon, pet:pets(name)")
+      .from("rescue_sightings")
+      .select("id, created_at, is_suspected_spam, lat, lon, pet:rescue_pets(name)")
       .order("created_at", { ascending: false })
       .limit(200);
 

@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const sightingId = params.id;
 
     const { data, error } = await supabaseAdmin
-      .from("sightings")
+      .from("rescue_sightings")
       .select(
         "id, created_at, pet_id, lat, lon, location_accuracy_m, message, photo_url, finder_contact, metadata, ip_hash, is_suspected_spam"
       )
