@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
@@ -10,10 +11,13 @@ export const runtime = "nodejs";
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
     const { user } = await requireAdmin(request);
-    const batchId = params.id;
+    const { id: batchId } = await context.params;
 
     const { data: tags, error } = await supabaseAdmin
       .from("rescue_tags")
