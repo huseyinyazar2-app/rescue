@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/adminGuard";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -9,10 +10,13 @@ interface RoleRequest {
   role: "admin" | "user";
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
     const { user } = await requireAdmin(request);
-    const targetId = params.id;
+    const { id: targetId } = await context.params;
     const body = (await request.json()) as RoleRequest;
 
     if (!body.role || !["admin", "user"].includes(body.role)) {
