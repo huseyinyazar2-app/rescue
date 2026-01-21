@@ -32,7 +32,7 @@ export default function PetOwnerPage({ params }: { params: { id: string } }) {
   const loadPet = async () => {
     setLoading(true);
     const { data, error } = await supabaseClient
-      .from('pets')
+      .from('rescue_pets')
       .select(
         'id,name,species,status,is_public,public_blurb,last_seen_area,last_seen_lat,last_seen_lon,last_seen_radius_km,public_visibility',
       )
@@ -57,7 +57,7 @@ export default function PetOwnerPage({ params }: { params: { id: string } }) {
     if (!pet) return;
     setStatusMessage(null);
 
-    const { error } = await supabaseClient.from('pets').update(updates).eq('id', pet.id);
+    const { error } = await supabaseClient.from('rescue_pets').update(updates).eq('id', pet.id);
 
     if (error) {
       setStatusMessage(error.message);

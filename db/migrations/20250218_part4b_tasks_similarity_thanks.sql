@@ -1,17 +1,17 @@
 BEGIN;
 
-ALTER TABLE sightings
+ALTER TABLE rescue_sightings
   ADD COLUMN IF NOT EXISTS hero_opt_in boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS hero_display_name text,
   ADD COLUMN IF NOT EXISTS is_hidden boolean NOT NULL DEFAULT false;
 
-ALTER TABLE pets
+ALTER TABLE rescue_pets
   ADD COLUMN IF NOT EXISTS is_hidden boolean NOT NULL DEFAULT false;
 
-CREATE TABLE IF NOT EXISTS volunteer_tasks (
+CREATE TABLE IF NOT EXISTS rescue_volunteer_tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  pet_id uuid NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
-  sighting_id uuid REFERENCES sightings(id) ON DELETE SET NULL,
+  pet_id uuid NOT NULL REFERENCES rescue_pets(id) ON DELETE CASCADE,
+  sighting_id uuid REFERENCES rescue_sightings(id) ON DELETE SET NULL,
   created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'cancelled')),
   task_type text NOT NULL DEFAULT 'confirm_sighting' CHECK (task_type IN ('confirm_sighting', 'search_help')),
@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS volunteer_tasks (
   is_hidden boolean NOT NULL DEFAULT false
 );
 
-CREATE TABLE IF NOT EXISTS volunteer_task_responses (
+CREATE TABLE IF NOT EXISTS rescue_volunteer_task_responses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  task_id uuid NOT NULL REFERENCES volunteer_tasks(id) ON DELETE CASCADE,
+  task_id uuid NOT NULL REFERENCES rescue_volunteer_tasks(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   response_type text NOT NULL CHECK (response_type IN ('seen', 'not_seen', 'maybe', 'can_help', 'cant_help')),
   message text,
@@ -35,15 +35,15 @@ CREATE TABLE IF NOT EXISTS volunteer_task_responses (
   UNIQUE (task_id, user_id)
 );
 
-CREATE TABLE IF NOT EXISTS thanks_posts (
+CREATE TABLE IF NOT EXISTS rescue_thanks_posts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  pet_id uuid UNIQUE NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+  pet_id uuid UNIQUE NOT NULL REFERENCES rescue_pets(id) ON DELETE CASCADE,
   created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
   message text,
   hero_kind text NOT NULL DEFAULT 'anonymous' CHECK (hero_kind IN ('anonymous', 'finder', 'volunteer')),
   hero_display_name text,
-  sighting_id uuid REFERENCES sightings(id) ON DELETE SET NULL,
+  sighting_id uuid REFERENCES rescue_sightings(id) ON DELETE SET NULL,
   is_published boolean NOT NULL DEFAULT false,
   published_at timestamptz,
   is_hidden boolean NOT NULL DEFAULT false
@@ -56,25 +56,25 @@ BEGIN
   END IF;
 END $$;
 
-ALTER TABLE volunteer_tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE volunteer_task_responses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE thanks_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rescue_volunteer_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rescue_volunteer_task_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rescue_thanks_posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY volunteer_tasks_owner_manage
-  ON volunteer_tasks
+  ON rescue_volunteer_tasks
   FOR ALL
   USING (created_by = auth.uid())
   WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY volunteer_tasks_volunteer_read
-  ON volunteer_tasks
+  ON rescue_volunteer_tasks
   FOR SELECT
   USING (
     status = 'open'
     AND is_hidden = false
     AND EXISTS (
       SELECT 1
-      FROM volunteer_subscriptions vs
+      FROM rescue_volunteer_subscriptions vs
       WHERE vs.user_id = auth.uid()
       AND (
         6371 * 2 * asin(
@@ -89,36 +89,36 @@ CREATE POLICY volunteer_tasks_volunteer_read
   );
 
 CREATE POLICY volunteer_task_responses_user_crud
-  ON volunteer_task_responses
+  ON rescue_volunteer_task_responses
   FOR ALL
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY volunteer_task_responses_owner_read
-  ON volunteer_task_responses
+  ON rescue_volunteer_task_responses
   FOR SELECT
   USING (
     EXISTS (
       SELECT 1
-      FROM volunteer_tasks vt
+      FROM rescue_volunteer_tasks vt
       WHERE vt.id = task_id
       AND vt.created_by = auth.uid()
     )
   );
 
 CREATE POLICY thanks_posts_public_read
-  ON thanks_posts
+  ON rescue_thanks_posts
   FOR SELECT
   USING (is_published = true AND is_hidden = false);
 
 CREATE POLICY thanks_posts_owner_manage
-  ON thanks_posts
+  ON rescue_thanks_posts
   FOR ALL
   USING (created_by = auth.uid())
   WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY pets_owner_or_admin_hide
-  ON pets
+  ON rescue_pets
   FOR UPDATE
   USING (
     owner_id = auth.uid()
@@ -130,23 +130,23 @@ CREATE POLICY pets_owner_or_admin_hide
   );
 
 CREATE POLICY sightings_owner_or_admin_hide
-  ON sightings
+  ON rescue_sightings
   FOR UPDATE
   USING (
     EXISTS (
       SELECT 1
-      FROM pets
-      WHERE pets.id = sightings.pet_id
-      AND pets.owner_id = auth.uid()
+      FROM rescue_pets
+      WHERE rescue_pets.id = rescue_sightings.pet_id
+      AND rescue_pets.owner_id = auth.uid()
     )
     OR COALESCE(auth.jwt() ->> 'role', '') = 'admin'
   )
   WITH CHECK (
     EXISTS (
       SELECT 1
-      FROM pets
-      WHERE pets.id = sightings.pet_id
-      AND pets.owner_id = auth.uid()
+      FROM rescue_pets
+      WHERE rescue_pets.id = rescue_sightings.pet_id
+      AND rescue_pets.owner_id = auth.uid()
     )
     OR COALESCE(auth.jwt() ->> 'role', '') = 'admin'
   );
@@ -173,7 +173,7 @@ AS $$
       vs.center_lat,
       vs.center_lon,
       vs.radius_km
-    FROM volunteer_subscriptions vs
+    FROM rescue_volunteer_subscriptions vs
     WHERE vs.user_id = auth.uid()
   ),
   candidate_tasks AS (
@@ -185,7 +185,7 @@ AS $$
       vt.center_lat,
       vt.center_lon,
       vt.radius_km
-    FROM volunteer_tasks vt
+    FROM rescue_volunteer_tasks vt
     WHERE vt.status = 'open'
       AND vt.is_hidden = false
   ),
@@ -225,7 +225,7 @@ AS $$
     ROUND(m.center_lon::numeric, 2)::double precision AS approx_lon,
     m.distance_km
   FROM matches m
-  JOIN pets p ON p.id = m.pet_id
+  JOIN rescue_pets p ON p.id = m.pet_id
   WHERE p.is_public = true
     AND p.is_hidden = false
   ORDER BY m.created_at DESC;
@@ -249,7 +249,7 @@ DECLARE
   new_task_id uuid;
 BEGIN
   SELECT owner_id INTO owner_id
-  FROM pets
+  FROM rescue_pets
   WHERE id = pet_id_input;
 
   IF owner_id IS NULL OR owner_id <> auth.uid() THEN
@@ -258,13 +258,13 @@ BEGIN
 
   SELECT s.lat, s.lon
   INTO task_center_lat, task_center_lon
-  FROM sightings s
+  FROM rescue_sightings s
   WHERE s.id = sighting_id_input;
 
   IF task_center_lat IS NULL OR task_center_lon IS NULL THEN
     SELECT p.last_seen_lat, p.last_seen_lon
     INTO task_center_lat, task_center_lon
-    FROM pets p
+    FROM rescue_pets p
     WHERE p.id = pet_id_input;
   END IF;
 
@@ -272,7 +272,7 @@ BEGIN
     RAISE EXCEPTION 'missing location';
   END IF;
 
-  INSERT INTO volunteer_tasks (
+  INSERT INTO rescue_volunteer_tasks (
     pet_id,
     sighting_id,
     created_by,
@@ -292,7 +292,7 @@ BEGIN
   RETURNING id INTO new_task_id;
 
   BEGIN
-    INSERT INTO notification_events (event_type, actor_id, entity_id, created_at)
+    INSERT INTO rescue_notification_events (event_type, actor_id, entity_id, created_at)
     VALUES ('TASK_CREATED', auth.uid(), new_task_id, now());
   EXCEPTION WHEN undefined_table THEN
     NULL;
@@ -326,7 +326,7 @@ AS $$
       species,
       last_seen_lat,
       last_seen_lon
-    FROM pets
+    FROM rescue_pets
     WHERE id = pet_id_input
   ),
   candidates AS (
@@ -346,7 +346,7 @@ AS $$
           pow(sin(radians((p.last_seen_lon - t.last_seen_lon) / 2)), 2)
         )
       )) AS distance_km
-    FROM pets p
+    FROM rescue_pets p
     JOIN target t ON true
     WHERE p.id <> t.id
       AND p.species = t.species

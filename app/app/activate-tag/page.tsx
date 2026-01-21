@@ -11,7 +11,7 @@ interface ActivateTagPageProps {
 export default async function ActivateTagPage({ searchParams }: ActivateTagPageProps) {
   await requireUser();
   const supabase = createSupabaseServerClient();
-  const { data: pets } = await supabase.from('pets').select('id,name').order('created_at', { ascending: false });
+  const { data: pets } = await supabase.from('rescue_pets').select('id,name').order('created_at', { ascending: false });
   const tagId = searchParams?.tagId;
 
   return (

@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/adminGuard";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -5,13 +6,16 @@ import { writeAuditLog } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
     const { user } = await requireAdmin(request);
-    const sightingId = params.id;
+    const { id: sightingId } = await context.params;
 
     const { data, error } = await supabaseAdmin
-      .from("sightings")
+      .from("rescue_sightings")
       .select(
         "id, created_at, pet_id, lat, lon, location_accuracy_m, message, photo_url, finder_contact, metadata, ip_hash, is_suspected_spam"
       )

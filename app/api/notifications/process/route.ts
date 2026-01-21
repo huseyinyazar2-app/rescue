@@ -114,7 +114,7 @@ export async function POST(request: Request) {
   }
 
   const { data: events, error } = await supabaseServer
-    .from('notification_events')
+    .from('rescue_notification_events')
     .select('id,event_type,pet_id')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
@@ -128,16 +128,16 @@ export async function POST(request: Request) {
 
   for (const event of (events ?? []) as NotificationEvent[]) {
     const { data: pet, error: petError } = await supabaseServer
-      .from('pets')
+      .from('rescue_pets')
       .select(
-        'id,name,species,photo_url,last_seen_area,last_seen_lat,last_seen_lon,last_seen_radius_km,public_blurb,tag:tags(public_code)',
+        'id,name,species,photo_url,last_seen_area,last_seen_lat,last_seen_lon,last_seen_radius_km,public_blurb,tag:rescue_tags(public_code)',
       )
       .eq('id', event.pet_id)
       .single();
 
     if (petError || !pet) {
       await supabaseServer
-        .from('notification_events')
+        .from('rescue_notification_events')
         .update({ status: 'failed', error: petError?.message ?? 'Pet not found' })
         .eq('id', event.id);
       continue;
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
 
     if (!pet.last_seen_lat || !pet.last_seen_lon) {
       await supabaseServer
-        .from('notification_events')
+        .from('rescue_notification_events')
         .update({ status: 'processed', processed_at: new Date().toISOString(), error: 'Missing location' })
         .eq('id', event.id);
       results.push({ event_id: event.id, outbox_count: 0 });
@@ -153,12 +153,12 @@ export async function POST(request: Request) {
     }
 
     const { data: subscriptions } = await supabaseServer
-      .from('volunteer_subscriptions')
+      .from('rescue_volunteer_subscriptions')
       .select(
-        'id,user_id,center_lat,center_lon,radius_km,species_filter,notify_lost,notify_found,is_enabled,volunteers!inner(is_enabled)',
+        'id,user_id,center_lat,center_lon,radius_km,species_filter,notify_lost,notify_found,is_enabled,rescue_volunteers!inner(is_enabled)',
       )
       .eq('is_enabled', true)
-      .eq('volunteers.is_enabled', true);
+      .eq('rescue_volunteers.is_enabled', true);
 
     const filtered = (subscriptions ?? []).filter((sub: Subscription) => {
       const matchesType =
@@ -171,12 +171,12 @@ export async function POST(request: Request) {
     });
 
     const userIds = filtered.map((sub) => sub.user_id);
-    const { data: profiles } = await supabaseServer
-      .from('profiles')
+    const { data: rescue_profiles } = await supabaseServer
+      .from('rescue_profiles')
       .select('id,email')
       .in('id', userIds);
 
-    const emailMap = new Map((profiles ?? []).map((profile) => [profile.id, profile.email]));
+    const emailMap = new Map((rescue_profiles ?? []).map((profile) => [profile.id, profile.email]));
 
     const outboxRows = filtered
       .map((sub) => {
@@ -199,7 +199,7 @@ export async function POST(request: Request) {
     }>;
 
     if (outboxRows.length > 0) {
-      await supabaseServer.from('notification_outbox').insert(outboxRows);
+      await supabaseServer.from('rescue_notification_outbox').insert(outboxRows);
     }
 
     for (const row of outboxRows) {
@@ -211,14 +211,14 @@ export async function POST(request: Request) {
         const result = await sendEmail({ to: row.to_email, subject: row.subject, html: row.body_html });
         if (result.status === 'sent') {
           await supabaseServer
-            .from('notification_outbox')
+            .from('rescue_notification_outbox')
             .update({ status: 'sent', sent_at: new Date().toISOString() })
             .eq('event_id', row.event_id)
             .eq('user_id', row.user_id);
         }
       } catch (emailError) {
         await supabaseServer
-          .from('notification_outbox')
+          .from('rescue_notification_outbox')
           .update({ status: 'failed', error: emailError instanceof Error ? emailError.message : 'Email error' })
           .eq('event_id', row.event_id)
           .eq('user_id', row.user_id);
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
     }
 
     await supabaseServer
-      .from('notification_events')
+      .from('rescue_notification_events')
       .update({ status: 'processed', processed_at: new Date().toISOString() })
       .eq('id', event.id);
 

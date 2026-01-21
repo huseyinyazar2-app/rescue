@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/adminGuard";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -9,17 +10,20 @@ interface RoleRequest {
   role: "admin" | "user";
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
     const { user } = await requireAdmin(request);
-    const targetId = params.id;
+    const { id: targetId } = await context.params;
     const body = (await request.json()) as RoleRequest;
 
     if (!body.role || !["admin", "user"].includes(body.role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin.from("profiles").update({ role: body.role }).eq("id", targetId);
+    const { error } = await supabaseAdmin.from("rescue_profiles").update({ role: body.role }).eq("id", targetId);
 
     if (error) {
       return NextResponse.json({ error: "Failed to update role" }, { status: 500 });
