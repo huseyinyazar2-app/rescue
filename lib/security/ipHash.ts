@@ -1,9 +1,6 @@
-import crypto from "crypto";
+import { createHash } from "crypto";
 
-export function hashIp(ip: string) {
-  const secret = process.env.IP_HASH_SECRET;
-  if (!secret) {
-    throw new Error("Missing IP_HASH_SECRET");
-  }
-  return crypto.createHash("sha256").update(`${secret}:${ip}`).digest("hex");
-}
+export const hashIp = (ip: string, secret: string): string => {
+  const normalizedIp = ip.trim();
+  return createHash("sha256").update(`${secret}${normalizedIp}`).digest("hex");
+};
