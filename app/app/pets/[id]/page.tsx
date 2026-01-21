@@ -13,7 +13,7 @@ export default async function PetDetailPage({ params }: PetDetailPageProps) {
   await requireUser();
   const supabase = createSupabaseServerClient();
   const { data: pet } = await supabase
-    .from('pets')
+    .from('rescue_pets')
     .select('id,name,species,notes,photo_url,status,last_seen_area,tag_id')
     .eq('id', params.id)
     .single();

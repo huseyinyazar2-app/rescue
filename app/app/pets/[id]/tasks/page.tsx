@@ -5,8 +5,8 @@ type Params = { params: { id: string } };
 export default async function OwnerTasksPage({ params }: Params) {
   const supabase = createSupabaseServerClient();
   const { data: tasks } = await supabase
-    .from('volunteer_tasks')
-    .select('id,status,created_at,message,volunteer_task_responses(id,response_type,message,created_at)')
+    .from('rescue_volunteer_tasks')
+    .select('id,status,created_at,message,rescue_volunteer_task_responses(id,response_type,message,created_at)')
     .eq('pet_id', params.id)
     .order('created_at', { ascending: false });
 
@@ -34,8 +34,8 @@ export default async function OwnerTasksPage({ params }: Params) {
             </div>
             {task.message ? <p className="mt-2 text-sm">{task.message}</p> : null}
             <div className="mt-4 space-y-2">
-              {task.volunteer_task_responses?.length ? (
-                task.volunteer_task_responses.map((response) => (
+              {task.rescue_volunteer_task_responses?.length ? (
+                task.rescue_volunteer_task_responses.map((response) => (
                   <div key={response.id} className="rounded-md bg-gray-50 p-2 text-sm">
                     <strong>{response.response_type}</strong>
                     {response.message ? <p>{response.message}</p> : null}

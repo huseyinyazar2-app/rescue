@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status");
 
     let query = supabaseAdmin
-      .from("tags")
+      .from("rescue_tags")
       .select("id, public_code, status, claimed_at, batch_id")
       .order("created_at", { ascending: false });
 

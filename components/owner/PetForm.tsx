@@ -38,7 +38,7 @@ export default function PetForm() {
     }
 
     const { data, error } = await supabase
-      .from('pets')
+      .from('rescue_pets')
       .insert({ name, species, notes, photo_url: photoUrl })
       .select('id')
       .single();

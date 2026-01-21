@@ -47,7 +47,7 @@ export default function PetDetailForm({
 
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase
-      .from('pets')
+      .from('rescue_pets')
       .update({
         name: formState.name,
         species: formState.species,

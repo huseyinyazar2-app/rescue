@@ -16,10 +16,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const batchId = params.id;
 
     const { data: tags, error } = await supabaseAdmin
-      .from("tags")
+      .from("rescue_tags")
       .select("public_code")
       .eq("batch_id", batchId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .returns<{ public_code: string }[]>();
 
     if (error) {
       return NextResponse.json({ error: "Failed to fetch tags" }, { status: 500 });
@@ -85,8 +86,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
     });
 
     const pdfBytes = await pdfDoc.save();
+    const pdfBuffer = Buffer.from(pdfBytes);
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

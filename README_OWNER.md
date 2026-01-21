@@ -14,7 +14,7 @@ Bu doküman, kedi sahibi (owner) akışlarını ve gerekli ortam değişkenlerin
 
 ## Güvenlik Notları
 
-- `sightings` tablosu owner rolü için **SELECT kapalıdır**.
+- `rescue_sightings` tablosu owner rolü için **SELECT kapalıdır**.
 - Owner, `get_owner_sightings` RPC’si üzerinden yalnızca yuvarlanmış koordinatları görür.
 - `finder_contact`, `ip_hash`, `metadata` alanları owner’a döndürülmez.
 
@@ -23,6 +23,7 @@ Bu doküman, kedi sahibi (owner) akışlarını ve gerekli ortam değişkenlerin
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 

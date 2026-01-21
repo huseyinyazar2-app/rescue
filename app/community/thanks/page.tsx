@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 export default async function CommunityThanksPage() {
   const supabase = createSupabaseServerClient();
   const { data } = await supabase
-    .from('thanks_posts')
+    .from('rescue_thanks_posts')
     .select('id,message,hero_kind,hero_display_name,created_at,pet_id')
     .eq('is_published', true)
     .eq('is_hidden', false)
