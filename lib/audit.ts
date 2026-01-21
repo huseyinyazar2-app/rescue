@@ -15,7 +15,7 @@ export async function writeAuditLog({
   targetId = null,
   details = null,
 }: AuditLogInput) {
-  await supabaseAdmin.from("audit_logs").insert({
+  await supabaseAdmin.from("rescue_audit_logs").insert({
     actor_id: actorId,
     action,
     target_type: targetType,

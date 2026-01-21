@@ -32,16 +32,16 @@ export const POST = async (request: NextRequest) => {
   const serviceClient = createServiceRoleClient();
 
   const { data: tagRow } = await serviceClient
-    .from("tags")
+    .from("rescue_tags")
     .select("id")
     .eq("public_code", publicCode)
     .maybeSingle();
 
   const { data: petRow } = tagRow?.id
-    ? await serviceClient.from("pets").select("id").eq("tag_id", tagRow.id).maybeSingle()
+    ? await serviceClient.from("rescue_pets").select("id").eq("tag_id", tagRow.id).maybeSingle()
     : { data: null };
 
-  await serviceClient.from("tag_scans").insert({
+  await serviceClient.from("rescue_tag_scans").insert({
     public_code: publicCode,
     tag_id: tagRow?.id ?? null,
     pet_id: petRow?.id ?? null,

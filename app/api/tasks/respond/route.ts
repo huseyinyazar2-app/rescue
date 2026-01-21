@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   const payload = (await request.json()) as Payload;
   const supabase = createSupabaseServerClient();
 
-  const { error } = await supabase.from('volunteer_task_responses').insert({
+  const { error } = await supabase.from('rescue_volunteer_task_responses').insert({
     task_id: payload.taskId,
     response_type: payload.responseType,
     message: payload.message ?? null,

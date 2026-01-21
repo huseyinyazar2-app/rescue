@@ -12,14 +12,14 @@ type ResponseRow = {
 export default async function OwnerThanksPage({ params }: Params) {
   const supabase = createSupabaseServerClient();
 
-  const { data: sightings } = await supabase
-    .from('sightings')
+  const { data: rescue_sightings } = await supabase
+    .from('rescue_sightings')
     .select('id,hero_opt_in,hero_display_name')
     .eq('pet_id', params.id)
     .order('created_at', { ascending: false });
 
   const { data: responses } = await supabase
-    .from('volunteer_task_responses')
+    .from('rescue_volunteer_task_responses')
     .select('id,response_type,message,created_at')
     .order('created_at', { ascending: false });
 
@@ -45,7 +45,7 @@ export default async function OwnerThanksPage({ params }: Params) {
             <input type="radio" name="heroKind" value="anonymous" defaultChecked />
             Anonim
           </label>
-          {sightings?.map((sighting) => (
+          {rescue_sightings?.map((sighting) => (
             <label key={sighting.id} className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
