@@ -19,7 +19,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       .from("rescue_tags")
       .select("public_code")
       .eq("batch_id", batchId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .returns<{ public_code: string }[]>();
 
     if (error) {
       return NextResponse.json({ error: "Failed to fetch tags" }, { status: 500 });
