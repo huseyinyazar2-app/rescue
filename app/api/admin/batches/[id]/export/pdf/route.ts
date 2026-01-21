@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import QRCode from "qrcode";
@@ -10,16 +11,20 @@ export const runtime = "nodejs";
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
     const { user } = await requireAdmin(request);
-    const batchId = params.id;
+    const { id: batchId } = await context.params;
 
     const { data: tags, error } = await supabaseAdmin
-      .from("tags")
+      .from("rescue_tags")
       .select("public_code")
       .eq("batch_id", batchId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .returns<{ public_code: string }[]>();
 
     if (error) {
       return NextResponse.json({ error: "Failed to fetch tags" }, { status: 500 });
@@ -85,8 +90,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
     });
 
     const pdfBytes = await pdfDoc.save();
+    const pdfBuffer = Buffer.from(pdfBytes);
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
