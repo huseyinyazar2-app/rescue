@@ -38,12 +38,12 @@ const logView = async (publicCode: string, petId: string | null) => {
 
   const serviceClient = createServiceRoleClient();
   const { data: tagRow } = await serviceClient
-    .from("tags")
+    .from("rescue_tags")
     .select("id")
     .eq("public_code", publicCode)
     .maybeSingle();
 
-  await serviceClient.from("tag_scans").insert({
+  await serviceClient.from("rescue_tag_scans").insert({
     public_code: publicCode,
     tag_id: tagRow?.id ?? null,
     pet_id: petId,

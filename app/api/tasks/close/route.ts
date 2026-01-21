@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { error } = await supabase
-    .from('volunteer_tasks')
+    .from('rescue_volunteer_tasks')
     .update({ status: 'closed', closed_at: new Date().toISOString() })
     .eq('id', taskId);
 
