@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     if (existingCodes.size > 0) {
-      return NextResponse.json({ error: \"Failed to generate unique tags\" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to generate unique tags" }, { status: 500 });
     }
 
     const { error: tagError } = await supabaseAdmin.from("tags").insert(
