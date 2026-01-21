@@ -39,7 +39,7 @@ export default function VolunteerPage() {
     setSessionEmail(session.user.email ?? null);
 
     const { data: volunteer } = await supabaseClient
-      .from('volunteers')
+      .from('rescue_volunteers')
       .select('is_enabled')
       .eq('user_id', session.user.id)
       .maybeSingle();
@@ -49,7 +49,7 @@ export default function VolunteerPage() {
     }
 
     const { data: subs } = await supabaseClient
-      .from('volunteer_subscriptions')
+      .from('rescue_volunteer_subscriptions')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -99,7 +99,7 @@ export default function VolunteerPage() {
     const nextValue = !isEnabled;
 
     const { error } = await supabaseClient
-      .from('volunteers')
+      .from('rescue_volunteers')
       .upsert(
         { user_id: session.user.id, is_enabled: nextValue, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' },
@@ -121,7 +121,7 @@ export default function VolunteerPage() {
 
     if (!session?.user) return;
 
-    const { error } = await supabaseClient.from('volunteer_subscriptions').insert({
+    const { error } = await supabaseClient.from('rescue_volunteer_subscriptions').insert({
       user_id: session.user.id,
       name: 'Yeni Bölge',
       center_lat: 40.99,
@@ -145,7 +145,7 @@ export default function VolunteerPage() {
   const updateSubscription = async (id: string, updates: Partial<Subscription>) => {
     setStatusMessage(null);
     const { error } = await supabaseClient
-      .from('volunteer_subscriptions')
+      .from('rescue_volunteer_subscriptions')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id);
 
@@ -159,7 +159,7 @@ export default function VolunteerPage() {
 
   const deleteSubscription = async (id: string) => {
     setStatusMessage(null);
-    const { error } = await supabaseClient.from('volunteer_subscriptions').delete().eq('id', id);
+    const { error } = await supabaseClient.from('rescue_volunteer_subscriptions').delete().eq('id', id);
 
     if (error) {
       setStatusMessage(error.message);

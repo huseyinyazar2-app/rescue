@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin.from("profiles").update({ role: body.role }).eq("id", targetId);
+    const { error } = await supabaseAdmin.from("rescue_profiles").update({ role: body.role }).eq("id", targetId);
 
     if (error) {
       return NextResponse.json({ error: "Failed to update role" }, { status: 500 });

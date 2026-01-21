@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const tagId = params.id;
 
     const { data: tag, error } = await supabaseAdmin
-      .from("tags")
+      .from("rescue_tags")
       .select("id, public_code")
       .eq("id", tagId)
       .single();
@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       status: 200,
       headers: {
         "Content-Type": "image/png",
-        "Content-Disposition": `attachment; filename=matrixc-tag-${tag.public_code}.png`,
+        "Content-Disposition": `inline; filename=matrixc-tag-${tag.public_code}.png`,
       },
     });
   } catch (error) {

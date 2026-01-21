@@ -5,6 +5,10 @@ import type { Database } from './types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
+  '';
 
 export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
@@ -18,7 +22,7 @@ export const createSupabaseServerClient = () => {
 
   return createServerClient<Database>(
     supabaseUrl,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    supabaseAnonKey,
     {
       cookies: {
         get(name) {
