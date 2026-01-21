@@ -1,46 +1,49 @@
-import Link from 'next/link';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-export default function CommunityThanksPage() {
+export default async function CommunityThanksPage() {
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase
+    .from('thanks_posts')
+    .select('id,message,hero_kind,hero_display_name,created_at,pet_id')
+    .eq('is_published', true)
+    .eq('is_hidden', false)
+    .gte('published_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+    .order('published_at', { ascending: false });
+
+  const heroOfDay = data?.[0];
+
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Teşekkür Paylaşımları</h1>
+    <main className="mx-auto max-w-3xl space-y-8 px-4 py-10">
+      <header>
+        <h1 className="text-2xl font-semibold">Teşekkürler</h1>
         <p className="text-sm text-muted-foreground">
-          Son 30 günde yayınlanan teşekkür gönderileri burada listelenir.
+          Son 30 günde paylaşılmış teşekkür postları.
         </p>
-        <Link className="text-sm text-blue-600" href="/community">
-          Topluluk sayfasına dön
-        </Link>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <article className="rounded-lg border p-4">
-          <h2 className="text-lg font-semibold">Maviş bulundu!</h2>
-          <p className="text-sm text-muted-foreground">
-            Kahraman: Anonim
+      {heroOfDay ? (
+        <section className="rounded-lg border bg-yellow-50 p-4">
+          <p className="text-xs uppercase text-yellow-700">Günün Kahramanı</p>
+          <p className="mt-1 text-lg font-semibold">
+            {heroOfDay.hero_display_name ?? 'Anonim Kahraman'}
           </p>
-          <p className="mt-2 text-sm">
-            “Gönüllüler sayesinde kısa sürede bulduk. Herkese teşekkürler!”
-          </p>
-        </article>
+          {heroOfDay.message ? <p className="text-sm">{heroOfDay.message}</p> : null}
+        </section>
+      ) : null}
 
-        <article className="rounded-lg border p-4">
-          <h2 className="text-lg font-semibold">Boncuk eve döndü</h2>
-          <p className="text-sm text-muted-foreground">
-            Kahraman: Rumuz ile gönüllü
-          </p>
-          <p className="mt-2 text-sm">
-            “Paylaşan ve arayan herkese minnettarız.”
-          </p>
-        </article>
-      </section>
-
-      <section className="rounded-lg border p-4">
-        <h2 className="text-lg font-semibold">Günün Kahramanı</h2>
-        <div className="mt-3 flex items-center justify-between rounded-md bg-muted/30 p-4 text-sm">
-          <span>Bugünün teşekkür kartı</span>
-          <button className="rounded-full border px-3 py-1">Kartı indir</button>
-        </div>
+      <section className="space-y-4">
+        {data?.length ? (
+          data.map((post) => (
+            <article key={post.id} className="rounded-lg border p-4">
+              <p className="text-sm">{post.message ?? 'Teşekkürler!'}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {post.hero_display_name ?? 'Anonim Kahraman'}
+              </p>
+            </article>
+          ))
+        ) : (
+          <p className="text-sm text-muted-foreground">Henüz teşekkür paylaşımı yok.</p>
+        )}
       </section>
     </main>
   );

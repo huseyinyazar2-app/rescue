@@ -1,17 +1,27 @@
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+
 export type SimilarPet = {
-  petId: string;
-  displayName: string;
-  distanceKm: number;
-  updatedAt: string;
+  pet_id: string;
+  public_code: string;
+  display_name: string | null;
+  photo_url: string | null;
+  last_seen_area: string | null;
+  approx_lat: number | null;
+  approx_lon: number | null;
+  score: number;
 };
 
-export function scoreSimilarPet(candidate: SimilarPet): number {
-  const daysSinceUpdate =
-    (Date.now() - new Date(candidate.updatedAt).getTime()) / 1000 / 86400;
+export const findSimilarLostPets = async (petId: string, limit = 5): Promise<SimilarPet[]> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.rpc('find_similar_lost_pets', {
+    p_pet_id: petId,
+    p_limit: limit,
+  });
 
-  return candidate.distanceKm + daysSinceUpdate;
-}
+  if (error) {
+    console.error('find_similar_lost_pets failed', error);
+    return [];
+  }
 
-export function sortSimilarPets(candidates: SimilarPet[]): SimilarPet[] {
-  return [...candidates].sort((a, b) => scoreSimilarPet(a) - scoreSimilarPet(b));
-}
+  return (data ?? []) as SimilarPet[];
+};
